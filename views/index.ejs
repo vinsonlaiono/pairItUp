@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Web Sockets Chat</title>
+    <!-- link for JQuery -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <!-- Boostrap CDN -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4"
+        crossorigin="anonymous">
+    <!-- Socket Link -->
+    <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.3.3/ace.js"></script>
+
+    <script type="text/javascript"></script>
+    <script>
+        var socket = io()
+
+        $(function () {
+
+            // Prompt user to enter name and store in person variable
+            var user = prompt("Hello and Welcome. Please enter your name");
+            update()
+
+            // emit person variable  to server
+            socket.emit('new_user', user);
+            console.log(user)
+
+            // Listen for allusers event sent from server via socket
+            socket.on('allusers', function (data) {
+                var user_list = '';
+                for (var i = 0; i < data.length; i++) {
+                    user_list += '<div id="loggedInUsers" class="card text-center"> <div class="card-header">' + data[i] + '</div></div>';
+                }
+                $('#user').html(user_list)
+                $('#current').html('Welcome ' + user)
+            })
+
+            // Retrieve the chat message from client page
+            // Emit to Server via socket
+            $('#send').click(function () {
+                socket.emit('new_msg', $('#chat_msg').val(), user)
+                $('#chat_msg').val('')
+            })
+
+            $('#chat_msg').keydown(function (event) {
+                if (event.which == 13) {
+                    event.preventDefault();
+                    socket.emit('new_msg', $('#chat_msg').val(), user)
+                    $('#chat_msg').val('')
+                }
+            })
+
+            socket.on('msg', function (data) {
+                console.log(data)
+                if (data.user == user) {
+                    $('#message').append('<span style="color: green"><span class="text-capitalize; min-width:0px;">' + data.user + '</span> said: ' + data.msg + '</span><br>')
+                    $('#output').scrollTop($('#message').height())
+                } else {
+                    $('#message').append('<span style="color: blue"><span  class="text-capitalize; min-width:0px;">' + data.user + '</span> said: ' + data.msg + '</span><br>')
+                    $('#output').scrollTop($('#message').height())
+                }
+
+
+            })
+            // newest block of code that has not been tested to load all messages on connection
+            socket.on('message_history', function (data) {
+                $('#chat_msg').val('')
+            })
+
+            socket.on('sendHTML', function (data) {
+                console.log('changed html____----****++++', data)
+                var allhtml = data
+                socketUpdate(data)
+                console.log(allhtml)
+            })
+
+        });
+        function ready() {
+            setupEditor();
+        }
+        function socketUpdate(data) {
+            var idoc = document.getElementById('iframe').contentWindow.document;
+            console.log("In Socketupdate method Idoc renders: ",idoc)
+            idoc.open();
+            idoc.write(data);
+            idoc.close();
+            window.editor = ace.edit("editor");
+            // editor.setValue('')
+        }
+        function update() {
+            var idoc = document.getElementById('iframe').contentWindow.document;
+            idoc.open();
+            idoc.write(editor.getValue());
+            idoc.close();
+
+            socket.emit('newHTML', editor.getValue())
+            // editor.setValue(data)
+        }
+
+        function setupEditor() {
+            var str = '<h1 style="color: red; text-align: center">CodingDojo</h1>'
+            window.editor = ace.edit("editor");
+            editor.setTheme("ace/theme/monokai");
+            editor.getSession().setMode("ace/mode/html");
+            editor.setValue(`<!DOCTYPE html>
+<html>
+
+<head>
+</head>
+
+<body>
+    ${str}
+</body>
+
+</html>`, 1); //1 = moves cursor to end
+
+            editor.getSession().on('change', function () {
+                socketUpdate()
+                update();
+            });
+
+            editor.focus();
+
+
+            editor.setOptions({
+                fontSize: "16pt",
+                showLineNumbers: false,
+                showGutter: false,
+                vScrollBarAlwaysVisible: true,
+                enableBasicAutocompletion: false, enableLiveAutocompletion: false
+            });
+
+            editor.setShowPrintMargin(false);
+            editor.setBehavioursEnabled(false);
+        }
+        setupEditor();
+        update();
+
+    </script>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0px;
+            height: 98%;
+            width: 99%;
+            overflow: hidden;
+            background-color: rgb(213, 213, 213)
+        }
+
+        #editor {
+            height: 100%;
+            width: 50%;
+            display: inline-block;
+        }
+
+        #container {
+            height: 70%;
+            width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            position: relative;
+            display: inline-flex;
+            /* border-radius:10% */
+        }
+
+        #iframe {
+            height: 100%;
+            display: inline-block;
+            width: 50%;
+            background-color: white
+        }
+
+        /* disable tag matching */
+
+        .ace_editor .ace_marker-layer .ace_bracket {
+            display: none
+        }
+
+        #chatroom {
+            display: inline-block;
+            vertical-align: top;
+            /* width: 70%; */
+        }
+
+        #window {
+            padding: 10px;
+            overflow-y: scroll;
+            height: 545px;
+            max-width: 275px;
+            background-color: rgb(243, 242, 242);
+            /* border: solid 1px rgb(211, 211, 211); */
+            margin-bottom: 3px;
+        }
+
+        #loggedInUsers {
+            display: inline-block;
+            height: 100px;
+            width: 100px;
+            margin-right: 5px;
+            margin-left: 5px;
+            background-color: aliceblue;
+            font-family:fantasy;
+
+        }
+    </style>
+
+</head>
+
+<body onload="ready()">
+    <div class="text-left">
+        <nav class="navbar navbar-dark bg-dark justify-content-between">
+            <a class=" display-4 text-white">PairItUp</a>
+            <h1 class="text-capitalize display-4 text-white" id="current"></h1>
+        </nav>
+    </div>
+    <div class="col" id='container'>
+
+        <div id="editor"></div>
+
+        <iframe class="mr-1" id='iframe' frameBorder="0"></iframe>
+
+        <div class="card ">
+            <div class="card-body" id="chatroom" style=" display: inline-block; vertical-align: top; max-width: 100%;">
+                <h3 class="card-header text-center">Chat Room </h3>
+
+                <div id="window">
+                    <div id="output" style=" background-color: rgb(243, 242, 242); margin-bottom: 3px;">
+                        <div class="" id="message"></div>
+                    </div>
+                </div>
+                <div class="input-group mb-3">
+                    <textarea class="form-control" id="chat_msg" aria-label="With textarea"></textarea>
+                    <div class="input-group-append">
+                        <button type="button" id="send" class="btn btn-outline-secondary">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <div class="row form-control ml-1" style="background-color: #343a40">
+        <div class="col" id="user"></div>
+    </div>
+
+</body>
+
+</html>
