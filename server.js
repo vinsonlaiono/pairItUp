@@ -31,6 +31,7 @@ io.on('connection', function(socket){
         users.push(socket.user)
         // console.log(users)
         // allMessages()
+        io.sockets.emit('newUserJoined', username)
         allUsers();
     });
     // Listen for new_msg event for a new message
@@ -43,17 +44,17 @@ io.on('connection', function(socket){
         allUsers();
     })
 
-    socket.on('newHTML', function(data) {
-        console.log("newHTML------------",data)
-        io.sockets.emit('sendHTML', data)
+    socket.on('newHTML', function(data, iframe) {
+        console.log("data renders: ------------",data)
+        console.log("iframe renders: ------------",iframe)
+        // io.sockets.emit('sendHTML', data)
+        socket.broadcast.emit('sendHTML', data, iframe)
     })
 
     // Send the users array to client
     function allUsers() {
         io.sockets.emit('allusers', users);
     }
-
-    
 
     // socket.on('disconnect', function(data){
     //     if(!socket.user) {
@@ -86,3 +87,4 @@ app.get('/', function(req, res) {
     
     res.render("index.ejs");
 });
+

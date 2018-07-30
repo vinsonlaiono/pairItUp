@@ -2,7 +2,8 @@
 <html lang="en">
 
 <head>
-    <title>Web Sockets Chat</title>
+    <title>PairItUp</title>
+    <link rel="icon" type="image/ico" href="./favicon.png">
     <!-- link for JQuery -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <!-- Boostrap CDN -->
@@ -61,60 +62,85 @@
                     $('#message').append('<span style="color: blue"><span  class="text-capitalize; min-width:0px;">' + data.user + '</span> said: ' + data.msg + '</span><br>')
                     $('#output').scrollTop($('#message').height())
                 }
-
-
+                
             })
             // newest block of code that has not been tested to load all messages on connection
             socket.on('message_history', function (data) {
                 $('#chat_msg').val('')
             })
-
-            socket.on('sendHTML', function (data) {
+            
+            socket.on('sendHTML', function (data, iframe) {
                 console.log('changed html____----****++++', data)
-                var allhtml = data
-                socketUpdate(data)
-                console.log(allhtml)
+                console.log('changed html____----****++++', iframe)
+                socketUpdate(data, iframe)
+                // setupSocketEditor(iframe)
+            })
+            
+            socket.on('newUserJoined', function (data) {
+                $('#message').append('<span style="color: orange"><span  class="text-capitalize; min-width:0px;">' + data + ' has joined</span><br>')
             })
 
         });
         function ready() {
             setupEditor();
         }
-        function socketUpdate(data) {
-            var idoc = document.getElementById('iframe').contentWindow.document;
-            console.log("In Socketupdate method Idoc renders: ",idoc)
-            idoc.open();
-            idoc.write(data);
-            idoc.close();
-            window.editor = ace.edit("editor");
-            // editor.setValue('')
+
+        function getHTML(){
+            return editor.getSession().getValue()
         }
+      
+        function socketUpdate(data, iframe) {
+            console.log("@@@@@@@@@@@@@@@@@ Recieved HTML: ", iframe)
+            
+            // console.log("socketUpdate", data);
+            var idoc = document.getElementById('iframe').contentWindow.document;
+            var mydoc = document.getElementById('editor')
+            console.log("@@@@@@@@@@@@@ mydoc (frame)", mydoc)
+            // console.log("In Socketupdate method Idoc renders: ",idoc)
+            idoc.open();
+            idoc.write(iframe);
+            idoc.close();
+            
+            let editorvalue = $("#editor").html()
+            
+            // console.log("editor value renders: --^^" ,editorvalue)
+            // editor.getSession().getValue( $("#editor").html(data), 1)
+            console.log("updating HTML text")
+            
+            editor.getSession().getValue( $("#editor").html(data), 1)
+
+            // editor.session.setValue(iframe)
+           
+
+            // editor.session.insert(customPosition, iframe)
+
+        }
+        // *** METHODS UPDATES THE IFRAME ON THE .ON('CHANGE')
         function update() {
+            console.log("update");
             var idoc = document.getElementById('iframe').contentWindow.document;
             idoc.open();
+            console.log("@@@@@@@@@@@@@@@@@@ EIDTOR")
+            console.log(editor)
+            var mydoc = document.getElementById('editor').
+            mydoc
+            console.log(editor.getValue())
             idoc.write(editor.getValue());
             idoc.close();
 
-            socket.emit('newHTML', editor.getValue())
-            // editor.setValue(data)
+            // *** EMITS VALUES OF THE EDITOR AND THE IFRAME VIA SOCKETS ***
+            // socket.emit('newHTML', $('#editor').html(), editor.getValue())
+            socket.emit('newHTML', $('#editor').html(), editor.getValue())
         }
 
-        function setupEditor() {
-            var str = '<h1 style="color: red; text-align: center">CodingDojo</h1>'
+        // ----------------- SETUP SOCKET EDITOR -------------------
+        function setupSocketEditor(socketHTML) {
+            console.log("setupEditor")
+           
             window.editor = ace.edit("editor");
             editor.setTheme("ace/theme/monokai");
             editor.getSession().setMode("ace/mode/html");
-            editor.setValue(`<!DOCTYPE html>
-<html>
-
-<head>
-</head>
-
-<body>
-    ${str}
-</body>
-
-</html>`, 1); //1 = moves cursor to end
+            editor.setValue(socketHTML, 1); //1 = moves cursor to end
 
             editor.getSession().on('change', function () {
                 socketUpdate()
@@ -123,9 +149,45 @@
 
             editor.focus();
 
+            editor.setOptions({
+                fontSize: "12pt",
+                showLineNumbers: false,
+                showGutter: false,
+                vScrollBarAlwaysVisible: true,
+                enableBasicAutocompletion: false, enableLiveAutocompletion: false
+            });
+
+            editor.setShowPrintMargin(false);
+            editor.setBehavioursEnabled(false);
+        }
+        // ----------------- SETUP EDITOR -------------------
+        function setupEditor() {
+            console.log("setupEditor")
+            var boilerHTML = `<!DOCTYPE html>
+<html>
+
+<head>
+</head>
+
+<body>
+    <h1 style="color: orange; text-align: center;">Coding Dojo</h1>
+</body>
+
+</html>`; //1 = moves cursor to end
+            window.editor = ace.edit("editor");
+            editor.setTheme("ace/theme/monokai");
+            editor.getSession().setMode("ace/mode/html");
+            editor.setValue(boilerHTML, 1); //1 = moves cursor to end
+
+            editor.getSession().on('change', function () {
+                // socketUpdate()
+                update();
+            });
+
+            editor.focus();
 
             editor.setOptions({
-                fontSize: "16pt",
+                fontSize: "12pt",
                 showLineNumbers: false,
                 showGutter: false,
                 vScrollBarAlwaysVisible: true,
@@ -145,8 +207,8 @@
             margin: 0;
             padding: 0px;
             height: 98%;
-            width: 99%;
-            overflow: hidden;
+            /* width: 99%; */
+            /* overflow: hidden; */
             background-color: rgb(213, 213, 213)
         }
 
@@ -157,7 +219,7 @@
         }
 
         #container {
-            height: 70%;
+            height: 74%;
             width: 100%;
             white-space: nowrap;
             overflow: hidden;
@@ -182,28 +244,31 @@
         #chatroom {
             display: inline-block;
             vertical-align: top;
-            /* width: 70%; */
+            /* max-width: 100%; */
+            width: 100%;
         }
 
         #window {
             padding: 10px;
             overflow-y: scroll;
-            height: 545px;
-            max-width: 275px;
+            height: 39.2rem;
+            width: 14.3rem;
             background-color: rgb(243, 242, 242);
-            /* border: solid 1px rgb(211, 211, 211); */
-            margin-bottom: 3px;
+            display: table-cell;
+            vertical-align: bottom;
         }
 
         #loggedInUsers {
             display: inline-block;
-            height: 100px;
-            width: 100px;
+            height: 150px;
+            width: 150px;
             margin-right: 5px;
             margin-left: 5px;
             background-color: aliceblue;
             font-family:fantasy;
-
+        } 
+        #message{
+            white-space: pre-wrap
         }
     </style>
 
@@ -216,14 +281,14 @@
             <h1 class="text-capitalize display-4 text-white" id="current"></h1>
         </nav>
     </div>
-    <div class="col" id='container'>
+    <div class="col mt-1" id='container'>
 
         <div id="editor"></div>
 
         <iframe class="mr-1" id='iframe' frameBorder="0"></iframe>
 
         <div class="card ">
-            <div class="card-body" id="chatroom" style=" display: inline-block; vertical-align: top; max-width: 100%;">
+            <div id="chatroom">
                 <h3 class="card-header text-center">Chat Room </h3>
 
                 <div id="window">
@@ -231,7 +296,7 @@
                         <div class="" id="message"></div>
                     </div>
                 </div>
-                <div class="input-group mb-3">
+                <div class="input-group ">
                     <textarea class="form-control" id="chat_msg" aria-label="With textarea"></textarea>
                     <div class="input-group-append">
                         <button type="button" id="send" class="btn btn-outline-secondary">Send</button>
@@ -241,7 +306,7 @@
         </div>
 
     </div>
-    <div class="row form-control ml-1" style="background-color: #343a40">
+    <div class="form-control" style="background-color: #343a40">
         <div class="col" id="user"></div>
     </div>
 
